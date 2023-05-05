@@ -67,6 +67,20 @@ var data = [
       "With CSS selectors, what character prefix should one use to specify a class?",
   },
 ];
+
+if (localStorage.getItem("numberOfTables") !== null) {
+  let numberOfTables = parseInt(localStorage.getItem("numberOfTables"));
+  document.getElementById("numberOfTables").value = numberOfTables;
+  data = [];
+  for (let i = 0; i < numberOfTables; i++) {
+    data.push({
+      label: "Table " + (i + 1),
+      value: i + 1,
+      question: "Table " + (i + 1),
+    });
+  }
+}
+
 var svg = d3
   .select("#chart")
   .append("svg")
@@ -226,4 +240,16 @@ function getRandomNumbers() {
   return array;
 }
 
-alert("Click on the wheel to spin!");
+if (localStorage.getItem("numberOfTables") === null) {
+  localStorage.setItem("numberOfTables", 10);
+}
+
+function setTableCount() {
+  numberOfTables = document.getElementById("numberOfTables").value;
+  localStorage.setItem("numberOfTables", numberOfTables);
+  location.reload();
+}
+
+function resetWheel() {
+  location.reload();
+}
