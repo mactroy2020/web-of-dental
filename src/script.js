@@ -293,6 +293,16 @@ function removeTableFromHistory(tableIndex) {
     // Update the history chips display
     updateHistoryChips();
 
+    // Check if we need to re-enable the spin button
+    // If all tables were previously selected but now one is available
+    if (oldpick.length < data.length) {
+      // Change button text back to "SPIN"
+      d3.select(".spin-button").text("SPIN");
+      // Re-attach the click handler to make the wheel spinnable again
+      container.on("click", spin);
+      console.log("Re-enabled spin button after table removal");
+    }
+
     // If we removed the last selected table, update the question display
     if (oldpick.length > 0) {
       const lastPicked = oldpick[oldpick.length - 1];
@@ -382,7 +392,17 @@ if (oldpick.length > 0) {
   updateHistoryChips(); // Update history chips on page load
 }
 
-container.on("click", spin);
+// Set initial click handler conditionally based on whether all tables are selected
+if (oldpick.length === data.length) {
+  console.log("All tables already selected on page load");
+  // Change button text to "RESET"
+  d3.select(".spin-button").text("RESET");
+  // Set click handler to resetWheel
+  container.on("click", resetWheel);
+} else {
+  // Normal case - tables are available to select
+  container.on("click", spin);
+}
 
 function spin(d) {
   container.on("click", null);
@@ -391,7 +411,12 @@ function spin(d) {
   console.log("OldPick: " + oldpick.length, "Data length: " + data.length);
   if (oldpick.length == data.length) {
     console.log("done");
-    container.on("click", null);
+    // Change button text to "RESET"
+    d3.select(".spin-button").text("RESET");
+    // Change cursor style to indicate it's clickable
+    container.style("cursor", "pointer");
+    // Change click handler to resetWheel instead of spin
+    container.on("click", resetWheel);
     return;
   }
 
@@ -476,8 +501,17 @@ function spin(d) {
       // Update history chips
       updateHistoryChips();
 
-      // Allow spinning again
-      container.on("click", spin);
+      // Check if this was the last available table
+      if (oldpick.length === data.length) {
+        console.log("All tables now selected, changing button to RESET");
+        // Change button text to "RESET"
+        d3.select(".spin-button").text("RESET");
+        // Change click handler to resetWheel
+        container.on("click", resetWheel);
+      } else {
+        // Allow spinning again
+        container.on("click", spin);
+      }
     });
 }
 
@@ -605,4 +639,12 @@ window.addEventListener("load", function () {
   const accordionContent = document.querySelector(".accordion-content");
   // Start with accordion closed
   accordionContent.style.maxHeight = "0px";
+
+  // Make sure the button text is correct on page load
+  // This must run after all DOM elements are loaded
+  if (oldpick.length === data.length) {
+    console.log("All tables already selected - ensuring button says RESET");
+    // Change button text to "RESET"
+    d3.select(".spin-button").text("RESET");
+  }
 });
