@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wheel of Dental</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()" />
+  </head>
+  <body>
+    <div class="main-container">
+      <div id="chart"></div>
+
+      <div id="controls">
+        <div class="accordion">
+          <button class="accordion-btn" onclick="toggleAccordion()">
+            Advanced Settings
+          </button>
+          <div class="accordion-content">
+            <div class="content-padding">
+              <div class="form-group">
+                <label for="numberOfTables">Number of Tables:</label>
+                <input
+                  id="numberOfTables"
+                  type="number"
+                  min="1"
+                  max="200"
+                  placeholder="Enter number of tables"
+                />
+              </div>
+              <div>
+                <button onclick="setTableCount()">Update Table Count</button>
+              </div>
+
+              <div class="button-spacer"></div>
+
+              <hr class="settings-divider" />
+
+              <button onclick="resetWheel()" class="btn-danger">
+                Reset Wheel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="selected-table">
+          <h3>Selected Table:</h3>
+          <div id="question"><h1></h1></div>
+        </div>
+
+        <div class="history-section">
+          <h3>Selection History:</h3>
+          <div id="history-chips"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="d3.v3.min.js" charset="utf-8"></script>
+    <script src="script.js?v=1"></script>
+  </body>
+</html>
