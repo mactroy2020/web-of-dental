@@ -36,12 +36,30 @@ var padding = { top: 10, right: 25, bottom: 10, left: 5 },
     "#8E24AA",
   ];
 
-// Vegas roulette palette: green for index 0 (the house zero),
-// then red/black alternating.
+// Which slice gets the green "house" color in Vegas. Reassigned after `data`
+// is built (we need to know the table count first). Persisted in localStorage
+// so the position survives reloads; resetWheel rerolls it to a different slot.
+var vegasGreenIndex = 0;
+
+function pickVegasGreen(tableCount) {
+  var stored = parseInt(localStorage.getItem("vegasGreenIndex"));
+  if (!isNaN(stored) && stored >= 0 && stored < tableCount) {
+    return stored;
+  }
+  var picked = Math.floor(Math.random() * tableCount);
+  localStorage.setItem("vegasGreenIndex", picked.toString());
+  return picked;
+}
+
+// Vegas roulette palette: one green "house" slot (vegasGreenIndex) with the
+// remaining slots alternating red/black. Anchor the alternation off the green
+// slot — i.e. the slot adjacent to green is always red — so wherever green
+// lands you don't end up with two same-color slices touching.
 function getColor(i) {
   if (theme === "vegas") {
-    if (i === 0) return "#127c2c";
-    return i % 2 === 1 ? "#c8102e" : "#1a1a1a";
+    if (i === vegasGreenIndex) return "#127c2c";
+    var offset = (i - vegasGreenIndex + data.length) % data.length;
+    return offset % 2 === 1 ? "#c8102e" : "#1a1a1a";
   }
   return colorRange[i % colorRange.length];
 }
@@ -93,6 +111,11 @@ if (localStorage.getItem("numberOfTables") !== null) {
   }
 }
 
+// Now that data.length is known, decide which slice is green (Vegas only).
+if (theme === "vegas") {
+  vegasGreenIndex = pickVegasGreen(data.length);
+}
+
 // Tight viewBox: hug the wheel background circle on three sides and extend just
 // past the arrow tip on the right. Avoids the dead margin a 700×700 square box
 // leaves around a wheel that doesn't fill it, so the rendered wheel is bigger.
@@ -135,6 +158,54 @@ usedGradient.append("stop").attr("offset", "0%").attr("stop-color", "#4a4a4a");
 usedGradient.append("stop").attr("offset", "85%").attr("stop-color", "#4a4a4a");
 usedGradient.append("stop").attr("offset", "100%").attr("stop-color", "#8c7530");
 
+// Vegas roulette-style geometry: donut slice ring on the outside, cream pocket
+// ring with radial dividers in the middle, gold central hub at the core. These
+// constants are 0/falsy for the dental theme so the slices stay a full pie.
+var sliceInnerR = theme === "vegas" ? r * 0.6 : 0;
+var pocketOuterR = sliceInnerR;
+var pocketInnerR = r * 0.4;
+var hubR = pocketInnerR;
+
+if (theme === "vegas") {
+  // Pocket-ring fill: cream → aged brass as you move outward.
+  var pocketGradient = defs
+    .append("radialGradient")
+    .attr("id", "pocket-gradient")
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("r", r)
+    .attr("gradientUnits", "userSpaceOnUse");
+  pocketGradient
+    .append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#ead7a0");
+  pocketGradient
+    .append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#bfa14a");
+
+  // Hub gradient: bright dome center fading to a darker rim, like polished brass.
+  var hubGradient = defs
+    .append("radialGradient")
+    .attr("id", "hub-gradient")
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("r", hubR)
+    .attr("gradientUnits", "userSpaceOnUse");
+  hubGradient
+    .append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#f5e7a3");
+  hubGradient
+    .append("stop")
+    .attr("offset", "65%")
+    .attr("stop-color", "#d4af37");
+  hubGradient
+    .append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#8c7530");
+}
+
 var container = svg
   .append("g")
   .attr("class", "chartholder")
@@ -162,8 +233,13 @@ var pie = d3.layout
     return 1;
   });
 
-// Declare an arc generator function with rounded corners
-var arc = d3.svg.arc().outerRadius(r).innerRadius(0).padAngle(0.002); // Minimal padding between segments
+// Declare an arc generator. Vegas uses a donut (innerRadius > 0) to leave room
+// for the pocket ring + central hub inside; dental keeps the full pie.
+var arc = d3.svg
+  .arc()
+  .outerRadius(r)
+  .innerRadius(sliceInnerR)
+  .padAngle(0.002);
 
 // Select paths, use arc generator to draw
 var arcs = vis
@@ -181,8 +257,8 @@ arcs
   .attr("d", function (d) {
     return arc(d);
   })
-  .style("stroke", "black")
-  .style("stroke-width", "0.5px");
+  .style("stroke", theme === "vegas" ? "#d4af37" : "black")
+  .style("stroke-width", theme === "vegas" ? "1.5px" : "0.5px");
 
 // Determine font size based on number of tables
 var tableFontSize = data.length > 75 ? "12px" : "16px"; // 25% reduction for more than 75 tables
@@ -202,25 +278,82 @@ function slicePlaqueTransform(d) {
   );
 }
 
-// Vegas theme: draw a roulette-table-style number plaque (white-outlined cell)
-// behind each slice's number. Drawn before the text so the text renders on top.
+// Vegas roulette inner-ring decorations: pocket annulus with radial dividers,
+// gold central hub, and a 4-arm turret cross with ball tips. All appended to
+// `vis` so they rotate with the wheel like a real roulette turret. Drawn after
+// the slice paths so they cleanly fill the donut's interior.
 if (theme === "vegas") {
-  var plaqueWidth = data.length > 75 ? 22 : 32;
-  var plaqueHeight = data.length > 75 ? 16 : 22;
-  arcs
-    .append("rect")
-    .attr("class", "number-plaque")
-    .attr("transform", slicePlaqueTransform)
-    .attr("x", -plaqueWidth / 2)
-    .attr("y", -plaqueHeight / 2)
-    .attr("width", plaqueWidth)
-    .attr("height", plaqueHeight)
-    .attr("rx", 2)
-    .style("fill", function (d, i) {
-      return getColor(i);
-    })
-    .style("stroke", "#ffffff")
-    .style("stroke-width", "1.5px");
+  // Pocket-ring annulus drawn as a thick-stroked circle (cheaper than a path).
+  vis
+    .append("circle")
+    .attr("class", "pocket-ring")
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("r", (pocketInnerR + pocketOuterR) / 2)
+    .style("fill", "none")
+    .style("stroke", "url(#pocket-gradient)")
+    .style("stroke-width", pocketOuterR - pocketInnerR);
+
+  // Pocket dividers — one per slice, aligned with slice boundary angles.
+  // d3.layout.pie starts at 12 o'clock and runs clockwise, so the boundary
+  // direction at index i is (sin θ, -cos θ) where θ = i * 2π / N.
+  for (var pi = 0; pi < data.length; pi++) {
+    var theta = (pi / data.length) * 2 * Math.PI;
+    var sx = Math.sin(theta);
+    var sy = -Math.cos(theta);
+    vis
+      .append("line")
+      .attr("class", "pocket-divider")
+      .attr("x1", sx * pocketInnerR)
+      .attr("y1", sy * pocketInnerR)
+      .attr("x2", sx * pocketOuterR)
+      .attr("y2", sy * pocketOuterR)
+      .style("stroke", "#5a4a20")
+      .style("stroke-width", "1px");
+  }
+
+  // Central hub disc with a brass gradient and a darker rim.
+  vis
+    .append("circle")
+    .attr("class", "hub")
+    .attr("cx", 0)
+    .attr("cy", 0)
+    .attr("r", hubR)
+    .style("fill", "url(#hub-gradient)")
+    .style("stroke", "#8c7530")
+    .style("stroke-width", "2px");
+
+  // Decorative turret cross: 4 spokes with ball tips. Start just outside the
+  // central spin-button circle (r=60) and end short of the hub edge so the
+  // balls sit clearly inside the hub.
+  var armInner = 65;
+  var armOuter = hubR * 0.88;
+  for (var ai = 0; ai < 4; ai++) {
+    var armAngle = ai * (Math.PI / 2);
+    var ax1 = Math.cos(armAngle) * armInner;
+    var ay1 = Math.sin(armAngle) * armInner;
+    var ax2 = Math.cos(armAngle) * armOuter;
+    var ay2 = Math.sin(armAngle) * armOuter;
+    vis
+      .append("line")
+      .attr("class", "turret-arm")
+      .attr("x1", ax1)
+      .attr("y1", ay1)
+      .attr("x2", ax2)
+      .attr("y2", ay2)
+      .style("stroke", "#b8941a")
+      .style("stroke-width", "4px")
+      .style("stroke-linecap", "round");
+    vis
+      .append("circle")
+      .attr("class", "turret-ball")
+      .attr("cx", ax2)
+      .attr("cy", ay2)
+      .attr("r", 5)
+      .style("fill", "#f5e7a3")
+      .style("stroke", "#5a4a20")
+      .style("stroke-width", "0.8px");
+  }
 }
 
 // Add the text
@@ -245,13 +378,6 @@ oldpick.forEach(function (picked) {
   d3.select(".slice:nth-child(" + (picked + 1) + ") path")
     .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#1A1A1A")
     .style("opacity", "1");
-
-  // Vegas: dim the roulette plaque so the picked tile reads as "used".
-  if (theme === "vegas") {
-    d3.select(".slice:nth-child(" + (picked + 1) + ") rect.number-plaque")
-      .style("fill", "#3a3a3a")
-      .style("stroke", "#d4af37");
-  }
 
   // Change the text style for better visibility on dark background
   const textElement = d3
@@ -355,13 +481,6 @@ function removeTableFromHistory(tableIndex) {
         return getColor(tableIndex);
       })
       .style("opacity", "1");
-
-    // Vegas: restore the roulette plaque to its original cell color + white border.
-    if (theme === "vegas") {
-      d3.select(".slice:nth-child(" + (tableIndex + 1) + ") rect.number-plaque")
-        .style("fill", getColor(tableIndex))
-        .style("stroke", "#ffffff");
-    }
 
     // Reset the text color and opacity - more direct styling approach
     const textElement = d3
@@ -556,13 +675,6 @@ function spin(d) {
         .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#1A1A1A")
         .style("opacity", "1");
 
-      // Vegas: dim the roulette plaque so the picked tile reads as "used".
-      if (theme === "vegas") {
-        d3.select(".slice:nth-child(" + (picked + 1) + ") rect.number-plaque")
-          .style("fill", "#3a3a3a")
-          .style("stroke", "#d4af37");
-      }
-
       // Change the text style for better visibility on dark background
       const textElement = d3
         .select(".slice:nth-child(" + (picked + 1) + ") text")
@@ -716,6 +828,19 @@ function resetWheel() {
     const currentTableCount = localStorage.getItem("numberOfTables") || "10";
     localStorage.removeItem("oldpick");
     localStorage.setItem("numberOfTables", currentTableCount);
+
+    // Vegas: reroll the green slice to a different slot so reset visibly
+    // changes the wheel rather than reusing the same green position.
+    if (theme === "vegas") {
+      const tableCount = parseInt(currentTableCount);
+      const current = parseInt(localStorage.getItem("vegasGreenIndex"));
+      let nextGreen = Math.floor(Math.random() * tableCount);
+      while (tableCount > 1 && nextGreen === current) {
+        nextGreen = Math.floor(Math.random() * tableCount);
+      }
+      localStorage.setItem("vegasGreenIndex", nextGreen.toString());
+    }
+
     location.reload();
   }
 }
