@@ -373,28 +373,37 @@ arcs
 
 // Mark previously picked slices as used
 oldpick.forEach(function (picked) {
-  // Change the slice background. Vegas uses a lighter gray so it contrasts
-  // against the unpicked black roulette slices.
+  applyUsedSliceStyle(picked);
+});
+
+// Style a single slice as "already picked": gray-out the fill and adjust the
+// text to remain readable. Vegas dims with a dark gradient + glowing white
+// text; dental dims to the wheel's outer ring gray + muted dark text.
+function applyUsedSliceStyle(picked) {
   d3.select(".slice:nth-child(" + (picked + 1) + ") path")
-    .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#1A1A1A")
+    .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#e0e0e0")
     .style("opacity", "1");
 
-  // Change the text style for better visibility on dark background
   const textElement = d3
     .select(".slice:nth-child(" + (picked + 1) + ") text")
     .node();
-  if (textElement) {
-    // Use a brighter white with higher opacity
+  if (!textElement) return;
+
+  if (theme === "vegas") {
     textElement.style.fill = "#ffffff";
     textElement.style.opacity = "0.6";
-    // Add a stronger glow effect
     textElement.style.filter =
       "drop-shadow(0px 0px 2px rgba(255, 255, 255, 0.9))";
-    // Add stroke for better visibility
     textElement.style.stroke = "white";
     textElement.style.strokeWidth = "0.5px";
+  } else {
+    textElement.style.fill = "#888";
+    textElement.style.opacity = "0.6";
+    textElement.style.filter = "none";
+    textElement.style.stroke = "none";
+    textElement.style.strokeWidth = "0";
   }
-});
+}
 
 // Function to update the history chips display
 function updateHistoryChips() {
@@ -669,30 +678,7 @@ function spin(d) {
     .ease("cubic-in-out") // Add easing function
     .each("end", function () {
       // Mark question as seen
-      // Change the slice background. Vegas uses a lighter gray so it contrasts
-      // against the unpicked black roulette slices.
-      d3.select(".slice:nth-child(" + (picked + 1) + ") path")
-        .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#1A1A1A")
-        .style("opacity", "1");
-
-      // Change the text style for better visibility on dark background
-      const textElement = d3
-        .select(".slice:nth-child(" + (picked + 1) + ") text")
-        .node();
-      if (textElement) {
-        // Use a brighter white with higher opacity
-        textElement.style.fill = "#ffffff";
-        textElement.style.opacity = "0.6";
-        // Add a stronger glow effect
-        textElement.style.filter =
-          "drop-shadow(0px 0px 2px rgba(255, 255, 255, 0.9))";
-        // Add stroke for better visibility
-        textElement.style.stroke = "white";
-        textElement.style.strokeWidth = "0.5px";
-        console.log("Updated text style for picked slice:", picked + 1);
-      } else {
-        console.log("Text element not found for slice:", picked + 1);
-      }
+      applyUsedSliceStyle(picked);
 
       // Populate question with a fade effect
       d3.select("#question h1")
