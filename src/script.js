@@ -1,4 +1,7 @@
-var padding = { top: 20, right: 40, bottom: 20, left: 40 },
+// Compact padding so the slice radius (r) is as large as possible inside the
+// 700×700 logical canvas. Right padding is a bit larger because the arrow sits
+// to the right of the wheel.
+var padding = { top: 10, right: 25, bottom: 10, left: 5 },
   w = 700 - padding.left - padding.right,
   h = 700 - padding.top - padding.bottom,
   r = Math.min(w, h) / 2,
@@ -8,6 +11,7 @@ var padding = { top: 20, right: 40, bottom: 20, left: 40 },
   oldpick = localStorage.getItem("oldpick")
     ? JSON.parse(localStorage.getItem("oldpick"))
     : [],
+  theme = localStorage.getItem("theme") || "dental",
   // Use a more professional color palette
   colorRange = [
     "#4285F4",
@@ -32,10 +36,24 @@ var padding = { top: 20, right: 40, bottom: 20, left: 40 },
     "#8E24AA",
   ];
 
-// Function to get color based on index
+// Vegas roulette palette: green for index 0 (the house zero),
+// then red/black alternating.
 function getColor(i) {
+  if (theme === "vegas") {
+    if (i === 0) return "#127c2c";
+    return i % 2 === 1 ? "#c8102e" : "#1a1a1a";
+  }
   return colorRange[i % colorRange.length];
 }
+
+// Initial (unused) text color must contrast with the slice background:
+// Vegas slices are dark, so white reads; Dental slices are bright, so black reads.
+function getInitialTextColor() {
+  return theme === "vegas" ? "#ffffff" : "black";
+}
+
+// Sync theme dropdown with the active theme so user sees the current selection.
+document.getElementById("theme").value = theme;
 
 var data = [];
 if (localStorage.getItem("numberOfTables") !== null) {
@@ -75,13 +93,47 @@ if (localStorage.getItem("numberOfTables") !== null) {
   }
 }
 
+// Tight viewBox: hug the wheel background circle on three sides and extend just
+// past the arrow tip on the right. Avoids the dead margin a 700×700 square box
+// leaves around a wheel that doesn't fill it, so the rendered wheel is bigger.
+var wheelCx = w / 2 + padding.left;
+var wheelCy = h / 2 + padding.top;
+var bgRadius = r + 5; // matches the wheel background circle below
+var arrowTipX = w + padding.left + padding.right + 15; // matches arrow translate
+var viewBoxX = wheelCx - bgRadius;
+var viewBoxY = wheelCy - bgRadius;
+var viewBoxWidth = arrowTipX - viewBoxX + 5;
+var viewBoxHeight = bgRadius * 2;
+
 var svg = d3
   .select("#chart")
   .append("svg")
   .data([data])
-  .attr("width", w + padding.left + padding.right)
-  .attr("height", h + padding.top + padding.bottom)
+  .attr(
+    "viewBox",
+    viewBoxX + " " + viewBoxY + " " + viewBoxWidth + " " + viewBoxHeight
+  )
+  .attr("preserveAspectRatio", "xMidYMid meet")
+  .style("width", "100%")
+  .style("height", "100%")
+  .style("max-width", "100%")
+  .style("max-height", "100%")
   .style("overflow", "visible");
+
+// Radial gradient used to "deactivate" picked slices in the Vegas theme:
+// grey for the inner 85% of the radius, fading to gold at the outer rim.
+// Defined in user-space coords so the gradient is centered at the wheel center.
+var defs = svg.append("defs");
+var usedGradient = defs
+  .append("radialGradient")
+  .attr("id", "used-gradient")
+  .attr("cx", 0)
+  .attr("cy", 0)
+  .attr("r", r)
+  .attr("gradientUnits", "userSpaceOnUse");
+usedGradient.append("stop").attr("offset", "0%").attr("stop-color", "#4a4a4a");
+usedGradient.append("stop").attr("offset", "85%").attr("stop-color", "#4a4a4a");
+usedGradient.append("stop").attr("offset", "100%").attr("stop-color", "#8c7530");
 
 var container = svg
   .append("g")
@@ -97,9 +149,9 @@ container
   .attr("cx", 0)
   .attr("cy", 0)
   .attr("r", r + 5)
-  .style("fill", "#f5f5f5")
-  .style("stroke", "#e0e0e0")
-  .style("stroke-width", "3px");
+  .style("fill", theme === "vegas" ? "#0a0a0a" : "#f5f5f5")
+  .style("stroke", theme === "vegas" ? "#d4af37" : "#e0e0e0")
+  .style("stroke-width", theme === "vegas" ? "5px" : "3px");
 
 var vis = container.append("g");
 
@@ -135,38 +187,71 @@ arcs
 // Determine font size based on number of tables
 var tableFontSize = data.length > 75 ? "12px" : "16px"; // 25% reduction for more than 75 tables
 
+// Shared radial transform so the plaque rect and number text sit at the same
+// point along each slice. Used by both the rect and text below.
+function slicePlaqueTransform(d) {
+  d.innerRadius = 0;
+  d.outerRadius = r;
+  d.angle = (d.startAngle + d.endAngle) / 2;
+  return (
+    "rotate(" +
+    ((d.angle * 180) / Math.PI - 90) +
+    ")translate(" +
+    (d.outerRadius - 40) +
+    ")"
+  );
+}
+
+// Vegas theme: draw a roulette-table-style number plaque (white-outlined cell)
+// behind each slice's number. Drawn before the text so the text renders on top.
+if (theme === "vegas") {
+  var plaqueWidth = data.length > 75 ? 22 : 32;
+  var plaqueHeight = data.length > 75 ? 16 : 22;
+  arcs
+    .append("rect")
+    .attr("class", "number-plaque")
+    .attr("transform", slicePlaqueTransform)
+    .attr("x", -plaqueWidth / 2)
+    .attr("y", -plaqueHeight / 2)
+    .attr("width", plaqueWidth)
+    .attr("height", plaqueHeight)
+    .attr("rx", 2)
+    .style("fill", function (d, i) {
+      return getColor(i);
+    })
+    .style("stroke", "#ffffff")
+    .style("stroke-width", "1.5px");
+}
+
 // Add the text
 arcs
   .append("text")
-  .attr("transform", function (d) {
-    d.innerRadius = 0;
-    d.outerRadius = r;
-    d.angle = (d.startAngle + d.endAngle) / 2;
-    // Position text near the outer edge with moderate padding
-    return (
-      "rotate(" +
-      ((d.angle * 180) / Math.PI - 90) +
-      ")translate(" +
-      (d.outerRadius - 40) +
-      ")"
-    );
-  })
+  .attr("transform", slicePlaqueTransform)
   .attr("text-anchor", "middle")
   .attr("alignment-baseline", "middle")
   .attr("dy", ".15em") // Adjust vertical position (1px from bottom)
   .style("font-size", tableFontSize) // Dynamic font size based on table count
-  .style("fill", "black") // Explicitly set the initial text color
+  .style("fill", getInitialTextColor()) // Initial color depends on theme (dark slices need white text)
   .style("opacity", "1") // Explicitly set the initial text opacity
   .text(function (d, i) {
-    return data[i].label;
+    // Vegas shows just the number, roulette-table style; dental keeps "Table N".
+    return theme === "vegas" ? String(i + 1) : data[i].label;
   });
 
 // Mark previously picked slices as used
 oldpick.forEach(function (picked) {
-  // Change the slice background
+  // Change the slice background. Vegas uses a lighter gray so it contrasts
+  // against the unpicked black roulette slices.
   d3.select(".slice:nth-child(" + (picked + 1) + ") path")
-    .attr("fill", "#1A1A1A") // Slightly less than pure black (5-10% lighter)
+    .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#1A1A1A")
     .style("opacity", "1");
+
+  // Vegas: dim the roulette plaque so the picked tile reads as "used".
+  if (theme === "vegas") {
+    d3.select(".slice:nth-child(" + (picked + 1) + ") rect.number-plaque")
+      .style("fill", "#3a3a3a")
+      .style("stroke", "#d4af37");
+  }
 
   // Change the text style for better visibility on dark background
   const textElement = d3
@@ -271,12 +356,19 @@ function removeTableFromHistory(tableIndex) {
       })
       .style("opacity", "1");
 
+    // Vegas: restore the roulette plaque to its original cell color + white border.
+    if (theme === "vegas") {
+      d3.select(".slice:nth-child(" + (tableIndex + 1) + ") rect.number-plaque")
+        .style("fill", getColor(tableIndex))
+        .style("stroke", "#ffffff");
+    }
+
     // Reset the text color and opacity - more direct styling approach
     const textElement = d3
       .select(".slice:nth-child(" + (tableIndex + 1) + ") text")
       .node();
     if (textElement) {
-      textElement.style.fill = "black";
+      textElement.style.fill = getInitialTextColor();
       textElement.style.opacity = "1";
       textElement.style.textShadow = "none"; // Remove any text shadow
       textElement.style.filter = "none"; // Remove filter
@@ -458,10 +550,18 @@ function spin(d) {
     .ease("cubic-in-out") // Add easing function
     .each("end", function () {
       // Mark question as seen
-      // Change the slice background
+      // Change the slice background. Vegas uses a lighter gray so it contrasts
+      // against the unpicked black roulette slices.
       d3.select(".slice:nth-child(" + (picked + 1) + ") path")
-        .attr("fill", "#1A1A1A") // Slightly less than pure black (5-10% lighter)
+        .attr("fill", theme === "vegas" ? "url(#used-gradient)" : "#1A1A1A")
         .style("opacity", "1");
+
+      // Vegas: dim the roulette plaque so the picked tile reads as "used".
+      if (theme === "vegas") {
+        d3.select(".slice:nth-child(" + (picked + 1) + ") rect.number-plaque")
+          .style("fill", "#3a3a3a")
+          .style("stroke", "#d4af37");
+      }
 
       // Change the text style for better visibility on dark background
       const textElement = d3
@@ -596,6 +696,12 @@ function setTableCount() {
     return;
   }
   localStorage.setItem("numberOfTables", numberOfTables.toString());
+  location.reload();
+}
+
+function setTheme(value) {
+  if (value !== "dental" && value !== "vegas") return;
+  localStorage.setItem("theme", value);
   location.reload();
 }
 

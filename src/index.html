@@ -3,15 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wheel of Dental</title>
+    <title id="page-title">Wheel of Dental</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Limelight&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
     <meta http-equiv="Permissions-Policy" content="interest-cohort=()" />
+    <script>
+      document.documentElement.setAttribute(
+        "data-theme",
+        localStorage.getItem("theme") || "dental"
+      );
+    </script>
   </head>
   <body>
     <div class="main-container">
@@ -24,6 +30,16 @@
           </button>
           <div class="accordion-content">
             <div class="content-padding">
+              <div class="form-group">
+                <label for="theme">Theme:</label>
+                <select id="theme" onchange="setTheme(this.value)">
+                  <option value="dental">Wheel of Dental</option>
+                  <option value="vegas">Vegas Baby</option>
+                </select>
+              </div>
+
+              <hr class="settings-divider" />
+
               <div class="form-group">
                 <label for="numberOfTables">Number of Tables:</label>
                 <input
@@ -62,6 +78,6 @@
     </div>
 
     <script src="d3.v3.min.js" charset="utf-8"></script>
-    <script src="script.js?v=1"></script>
+    <script src="script.js?v=8"></script>
   </body>
 </html>

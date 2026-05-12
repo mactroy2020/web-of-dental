@@ -1,3 +1,8 @@
+html,
+body {
+  height: 100%;
+}
+
 body {
   font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
   margin: 0;
@@ -5,7 +10,8 @@ body {
   background-color: #f5f5f5;
   color: #333;
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 text {
@@ -47,26 +53,60 @@ button:hover {
 .main-container {
   display: flex;
   width: 100%;
-  flex-wrap: wrap;
+  height: 100%;
+  flex-wrap: nowrap;
 }
 
 #chart {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 800px;
-  padding: 20px;
+  padding: 15px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#chart svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 #controls {
-  flex: 1;
-  min-width: 300px;
+  flex: 0 0 380px;
   background-color: white;
   padding: 20px 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   margin: 20px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    height: auto;
+  }
+  body {
+    height: auto;
+    overflow: auto;
+    flex-direction: column;
+  }
+  .main-container {
+    flex-wrap: wrap;
+    height: auto;
+  }
+  #chart {
+    flex: 1 1 100%;
+    height: 60vh;
+  }
+  #controls {
+    flex: 1 1 100%;
+    overflow-y: visible;
+  }
 }
 
 #question {
@@ -303,4 +343,122 @@ label {
   padding: 0 5px;
   box-sizing: border-box;
   width: 100%;
+}
+
+select {
+  font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* =========================================
+   Vegas Baby theme
+   ========================================= */
+html[data-theme="vegas"] body {
+  background: radial-gradient(ellipse at center, #0e5a31 0%, #062a17 100%);
+  color: #f5e7a3;
+}
+
+html[data-theme="vegas"] #controls {
+  background-color: #141414;
+  border: 2px solid #d4af37;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+}
+
+html[data-theme="vegas"] .selected-table,
+html[data-theme="vegas"] .history-section {
+  background-color: #1f1f1f;
+  border: 1px solid #d4af37;
+}
+
+html[data-theme="vegas"] .selected-table h3,
+html[data-theme="vegas"] .history-section h3 {
+  font-family: "Limelight", "Roboto", cursive;
+  color: #d4af37;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+html[data-theme="vegas"] #question {
+  background-color: #0a0a0a;
+  border: 2px solid #d4af37;
+  box-shadow: inset 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+html[data-theme="vegas"] #question h1 {
+  color: #d4af37;
+  font-family: "Limelight", "Roboto", cursive;
+  text-shadow: 0 0 4px rgba(212, 175, 55, 0.35);
+}
+
+html[data-theme="vegas"] label {
+  color: #d4af37;
+}
+
+html[data-theme="vegas"] input,
+html[data-theme="vegas"] select {
+  background-color: #2a2a2a;
+  color: #f5e7a3;
+  border-color: #d4af37;
+}
+
+html[data-theme="vegas"] button {
+  background-color: #d4af37;
+  color: #141414;
+  font-weight: 700;
+}
+
+html[data-theme="vegas"] button:hover {
+  background-color: #f5e7a3;
+}
+
+html[data-theme="vegas"] .btn-danger {
+  background-color: #c8102e;
+  color: white;
+}
+
+html[data-theme="vegas"] .btn-danger:hover {
+  background-color: #a00d24;
+}
+
+html[data-theme="vegas"] .accordion-btn {
+  background-color: #d4af37;
+  color: #141414;
+  border-color: #d4af37;
+}
+
+html[data-theme="vegas"] .accordion-btn:hover {
+  background-color: #f5e7a3;
+}
+
+html[data-theme="vegas"] .accordion-content {
+  background-color: #1f1f1f;
+  border-color: #d4af37;
+}
+
+html[data-theme="vegas"] hr,
+html[data-theme="vegas"] .settings-divider {
+  background-color: #d4af37;
+}
+
+html[data-theme="vegas"] .history-chip {
+  border: 2px solid #d4af37;
+  box-shadow: 0 2px 5px rgba(212, 175, 55, 0.3);
+}
+
+html[data-theme="vegas"] .spin-button {
+  fill: #d4af37;
+  font-family: "Limelight", "Roboto", cursive;
+}
+
+html[data-theme="vegas"] .spinner-circle {
+  fill: #0a0a0a;
+  stroke: #d4af37;
+  stroke-width: 3;
 }
